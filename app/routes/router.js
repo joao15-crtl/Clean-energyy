@@ -30,11 +30,13 @@ router.post("/cadastrar_produto", requireVendedor, uploadProduto.single("imagem"
 router.get("/listaprodutos", requireLogin, produtoController.getListaProdutos);
 router.get("/item/:id", produtoController.getItem);
 router.post("/item/:id/avaliar", requireLogin, produtoController.avaliarItem);
+router.put("/produtos/:id", requireVendedor, produtoController.updateProduto);
 router.delete("/produtos/:id", requireVendedor, produtoController.deleteProduto);
 
 /* CARRINHO */
 router.get("/carrinho", carrinhoController.getCarrinho);
 router.post("/cart/add", carrinhoController.addToCart);
+router.post("/cart/update", carrinhoController.updateQuantidade);
 router.post("/cart/remove", carrinhoController.removeFromCart);
 
 /* PAGAMENTO / PEDIDOS */

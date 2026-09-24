@@ -1,6 +1,4 @@
- let cardParaExcluir = null;
 let cardParaEditar = null;
-const excluirModal = new bootstrap.Modal(document.getElementById('excluirModal'));
 const editarModal = new bootstrap.Modal(document.getElementById('editarModal'));
 
 
@@ -222,23 +220,7 @@ document.getElementById('editarQuantidade').addEventListener('blur', function(e)
 });
 
 
-// Funcionalidade de Exclusão
-
-document.querySelectorAll('.btn-excluir').forEach(btn => {
-  btn.addEventListener('click', function() {
-    cardParaExcluir = this.closest('.produto-card');
-    excluirModal.show();
-  });
-});
-
-document.getElementById('confirmarExcluirBtn').addEventListener('click', function() {
-  if (cardParaExcluir) {
-    cardParaExcluir.remove();
-    excluirModal.hide();
-    cardParaExcluir = null;
-  }
-});
-
+// Exclusão é tratada em produto-delete.js
 
 // Funcionalidade de Edição
 
@@ -278,27 +260,45 @@ document.getElementById('salvarEdicaoBtn').addEventListener('click', function() 
     const quantidadeValido = validarQuantidade(document.getElementById('editarQuantidade').value);
     
     if (nomeValido && enderecoValido && precoValido && quantidadeValido) {
-      const nome = document.getElementById('editarNome').value;
-      const endereco = document.getElementById('editarEndereco').value;
-      const preco = document.getElementById('editarPreco').value;
-      const quantidade = document.getElementById('editarQuantidade').value;
+      const card = cardParaEditar;
+      const salvarBtn = this;
+      const textoBotao = salvarBtn.innerHTML;
+      salvarBtn.disabled = true;
+      salvarBtn.innerHTML = '<i class="bx bx-loader-alt bx-spin"></i> Salvando...';
 
-      cardParaEditar.querySelector('h3').textContent = nome;
-      cardParaEditar.querySelector('.endereco').textContent = endereco;
-      cardParaEditar.querySelector('.preco').textContent = preco;
-      cardParaEditar.querySelector('.quantidade').textContent = quantidade;
+      fetch(`/produtos/${card.getAttribute('data-id')}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: document.getElementById('editarNome').value,
+          local: document.getElementById('editarEndereco').value,
+          preco: document.getElementById('editarPreco').value,
+          quantidade: document.getElementById('editarQuantidade').value
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (!data.success) {
+          mostrarNotificacao('Erro ao salvar produto: ' + data.message, 'error');
+          return;
+        }
 
+        card.querySelector('h3').textContent = data.produto.nome;
+        card.querySelector('.endereco').textContent = data.produto.local;
+        card.querySelector('.preco').textContent = 'R$ ' + data.produto.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        card.querySelector('.quantidade').textContent = data.produto.quantidade;
 
-      document.querySelectorAll('.form-control').forEach(input => {
-        input.classList.remove('is-valid', 'is-invalid');
+        editarModal.hide();
+        mostrarNotificacao('✓ Produto atualizado com sucesso!', 'success');
+      })
+      .catch(error => {
+        console.error('Erro ao atualizar produto:', error);
+        mostrarNotificacao('Erro ao conectar com o servidor', 'error');
+      })
+      .finally(() => {
+        salvarBtn.innerHTML = textoBotao;
+        verificarFormularioValido();
       });
-      
-      document.querySelectorAll('.error-message').forEach(error => {
-        error.style.display = 'none';
-        error.textContent = '';
-      });
-
-      editarModal.hide();
     }
   }
 });

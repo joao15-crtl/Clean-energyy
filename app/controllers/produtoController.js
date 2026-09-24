@@ -4,7 +4,11 @@ const { arquivoParaDataUri } = require('../helpers/imagem');
 
 // GET / — vitrine pública de produtos, com filtros de busca
 async function listarProdutos(req, res) {
-  const { busca, estado, categoria, precoMin, precoMax } = req.query;
+  const { busca, estado, categoria } = req.query;
+  // Preços negativos ou inválidos são ignorados
+  const precoValido = (valor) => (valor !== undefined && valor !== '' && Number(valor) >= 0 ? valor : '');
+  const precoMin = precoValido(req.query.precoMin);
+  const precoMax = precoValido(req.query.precoMax);
   try {
     const produtos = await produtosModel.findAllComFiltros({ busca, estado, categoria, precoMin, precoMax });
     res.render('pages/produtos', {
@@ -144,10 +148,44 @@ async function avaliarItem(req, res) {
   }
 }
 
+// PUT /produtos/:id — edição pelo vendedor dono do produto
+async function updateProduto(req, res) {
+  const nome = (req.body.nome || '').toString().trim();
+  const local = (req.body.local || '').toString().trim();
+
+  const preco = parseFloat((req.body.preco || '').toString().trim()
+    .replace(/R\$\s*/g, '')
+    .replace(/\s/g, '')
+    .replace(/\./g, '')
+    .replace(',', '.'));
+
+  const quantidadeMatch = (req.body.quantidade || '').toString().match(/\d+(?:[.,]\d+)?/);
+  const quantidade = quantidadeMatch ? parseFloat(quantidadeMatch[0].replace(',', '.')) : NaN;
+
+  if (nome.length < 3 || nome.length > 100 || local.length === 0 || local.length > 200
+      || !(preco > 0) || preco > 999999.99 || !(quantidade > 0) || quantidade > 10000) {
+    return res.status(400).json({ success: false, message: 'Dados inválidos' });
+  }
+
+  try {
+    const result = await produtosModel.updateDoVendedor(req.params.id, req.session.userId, { nome, local, preco, quantidade });
+    if (!result.affectedRows) {
+      return res.status(404).json({ success: false, message: 'Produto não encontrado' });
+    }
+    res.json({ success: true, produto: { nome, local, preco, quantidade } });
+  } catch (err) {
+    console.error('Erro ao atualizar produto:', err);
+    res.status(500).json({ success: false, message: 'Erro ao atualizar produto' });
+  }
+}
+
 // DELETE /produtos/:id
 async function deleteProduto(req, res) {
   try {
-    await produtosModel.delete(req.params.id);
+    const result = await produtosModel.deleteDoVendedor(req.params.id, req.session.userId);
+    if (!result.affectedRows) {
+      return res.status(404).json({ success: false, message: 'Produto não encontrado' });
+    }
     res.json({ success: true, message: 'Produto deletado com sucesso' });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Erro ao deletar produto' });
@@ -161,5 +199,6 @@ module.exports = {
   getListaProdutos,
   getItem,
   avaliarItem,
+  updateProduto,
   deleteProduto
 };

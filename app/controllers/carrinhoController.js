@@ -26,6 +26,27 @@ async function addToCart(req, res) {
   }
 }
 
+// POST /cart/update — altera a quantidade de um item (JSON)
+async function updateQuantidade(req, res) {
+  try {
+    const userId = req.session.userId || req.sessionID;
+    const index = parseInt(req.body.index, 10);
+    const quantidade = parseInt(req.body.quantidade, 10);
+    if (isNaN(index) || isNaN(quantidade)) {
+      return res.status(400).json({ success: false, message: 'Dados inválidos' });
+    }
+
+    const salva = await cartModel.updateQuantidade(userId, index, quantidade);
+    if (salva === null) {
+      return res.status(404).json({ success: false, message: 'Item indisponível' });
+    }
+    res.json({ success: true, quantidade: salva });
+  } catch (err) {
+    console.error('Erro ao atualizar quantidade:', err);
+    res.status(500).json({ success: false, message: 'Erro ao atualizar quantidade' });
+  }
+}
+
 // POST /cart/remove
 async function removeFromCart(req, res) {
   try {
@@ -37,4 +58,4 @@ async function removeFromCart(req, res) {
   }
 }
 
-module.exports = { getCarrinho, addToCart, removeFromCart };
+module.exports = { getCarrinho, addToCart, updateQuantidade, removeFromCart };

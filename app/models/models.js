@@ -68,9 +68,30 @@ const produtosModel = {
     }
   },
 
+  // Atualiza só se o produto pertencer ao vendedor (affectedRows = 0 caso contrário)
+  updateDoVendedor: async (id, usuarioId, dados) => {
+    try {
+      const sql = `UPDATE produtos SET nome = ?, local = ?, preco = ?, quantidade = ? WHERE id = ? AND usuario_id = ?`;
+      const [result] = await pool.query(sql, [dados.nome, dados.local, dados.preco, dados.quantidade, id, usuarioId]);
+      return result;
+    } catch (err) {
+      throw err;
+    }
+  },
+
   delete: async (id) => {
     try {
       const [result] = await pool.query("DELETE FROM produtos WHERE id = ?", [id]);
+      return result;
+    } catch (err) {
+      throw err;
+    }
+  },
+
+  // Exclui só se o produto pertencer ao vendedor (affectedRows = 0 caso contrário)
+  deleteDoVendedor: async (id, usuarioId) => {
+    try {
+      const [result] = await pool.query("DELETE FROM produtos WHERE id = ? AND usuario_id = ?", [id, usuarioId]);
       return result;
     } catch (err) {
       throw err;

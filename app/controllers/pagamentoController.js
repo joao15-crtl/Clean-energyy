@@ -56,13 +56,23 @@ async function criarPagamento(req, res) {
       });
     }
 
-    const items = cart.map(item => ({
-      id: String(item.productId),
-      title: item.nome,
-      quantity: item.quantidade,
-      currency_id: 'BRL',
-      unit_price: Number(item.preco)
-    }));
+    // Ignora itens sem estoque e limita a quantidade ao disponível
+    const items = cart
+      .filter(item => Math.floor(item.disponivel) >= 1)
+      .map(item => ({
+        id: String(item.productId),
+        title: item.nome,
+        quantity: Math.min(Math.max(parseInt(item.quantidade, 10) || 1, 1), Math.floor(item.disponivel)),
+        currency_id: 'BRL',
+        unit_price: Number(item.preco)
+      }));
+
+    if (items.length === 0) {
+      return res.status(400).json({
+        sucesso: false,
+        erro: 'Nenhum item do carrinho está disponível.'
+      });
+    }
 
     const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
 

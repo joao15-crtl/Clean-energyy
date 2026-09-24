@@ -38,13 +38,16 @@
       <% } else { %>
 
         <% cart.forEach((produto, index) => { %>
+          <% const disponivel = Number(produto.disponivel) || 0; %>
+          <% const quantidadeInicial = Math.min(Math.max(Number(produto.quantidade) || 1, 1), Math.floor(disponivel)); %>
           <article class="produto-card"
+            data-index="<%= index %>"
             data-nome="<%= produto.nome %>"
             data-preco="<%= produto.preco %>"
-            data-max="5">
+            data-max="<%= Math.floor(disponivel) %>">
 
             <nav class="produto-top">
-              <img src="/imagem/<%= produto.imagem %>" alt="<%= produto.nome %>" onerror="this.src='/imagem/sem-foto.png'">
+              <img src="<%= produto.imagem && produto.imagem.startsWith('data:') ? produto.imagem : '/imagem/' + (produto.imagem || 'sem-foto.png') %>" alt="<%= produto.nome %>" onerror="this.src='/imagem/sem-foto.png'">
 
               <nav class="produto-info">
                 <h3><%= produto.nome %></h3>
@@ -57,14 +60,18 @@
                 <p><%= produto.descricao || "Sem descrição" %></p>
 
                 <p class="disponivel">
-                  <strong>Disponível:</strong> 5 toneladas
+                  <% if (disponivel > 0) { %>
+                    <strong>Disponível:</strong> <%= disponivel.toLocaleString('pt-BR') %> tonelada(s)
+                  <% } else { %>
+                    <strong>Indisponível</strong>
+                  <% } %>
                 </p>
 
-                <span class="preco">R$ <%= produto.preco %></span>
+                <span class="preco">R$ <%= Number(produto.preco).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></span>
 
                 <nav class="quantidade-controls">
                   <button class="quantidade-btn btn-menos">−</button>
-                  <span class="quantidade-num">1</span>
+                  <span class="quantidade-num"><%= quantidadeInicial %></span>
                   <button class="quantidade-btn btn-mais">+</button>
                 </nav>
               </nav>
@@ -150,30 +157,52 @@
       resumo.classList.toggle("resumo-vazio", resumoLista.children.length === 0);
     }
 
+    // Salva a nova quantidade no servidor e mostra o valor que ele confirmou
+    function salvarQuantidade(card, quantidade) {
+      const num = card.querySelector(".quantidade-num");
+      const botoes = card.querySelectorAll(".quantidade-btn");
+      botoes.forEach(b => b.disabled = true);
+
+      fetch("/cart/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ index: card.dataset.index, quantidade })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (!data.success) throw new Error(data.message);
+        num.textContent = data.quantidade;
+        atualizarResumo();
+      })
+      .catch(erro => {
+        console.error("Erro ao atualizar quantidade:", erro);
+        alert("Não foi possível atualizar a quantidade. Tente novamente.");
+      })
+      .finally(() => botoes.forEach(b => b.disabled = false));
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
 
       document.querySelectorAll(".btn-mais").forEach(btn => {
         btn.addEventListener("click", function () {
           const card = this.closest(".produto-card");
           const max = Number(card.dataset.max);
-          const num = this.parentElement.querySelector(".quantidade-num");
-          const atual = Number(num.textContent);
+          const atual = Number(card.querySelector(".quantidade-num").textContent);
 
           if (atual < max) {
-            num.textContent = atual + 1;
-            atualizarResumo();
+            salvarQuantidade(card, atual + 1);
           } else {
-            alert(`Limite máximo atingido: ${max} unidades.`);
+            alert(`Limite máximo atingido: ${max} tonelada(s) disponível(is).`);
           }
         });
       });
 
       document.querySelectorAll(".btn-menos").forEach(btn => {
         btn.addEventListener("click", function() {
-          const num = this.parentElement.querySelector(".quantidade-num");
-          if (Number(num.textContent) > 1) {
-            num.textContent = Number(num.textContent) - 1;
-            atualizarResumo();
+          const card = this.closest(".produto-card");
+          const atual = Number(card.querySelector(".quantidade-num").textContent);
+          if (atual > 1) {
+            salvarQuantidade(card, atual - 1);
           }
         });
       });

@@ -226,12 +226,16 @@
           <input
             type="number"
             name="precoMin"
+            min="0"
+            step="any"
             placeholder="Preço mín."
             value="<%= typeof filtros !== 'undefined' ? filtros.precoMin : '' %>"
           />
           <input
             type="number"
             name="precoMax"
+            min="0"
+            step="any"
             placeholder="Preço máx."
             value="<%= typeof filtros !== 'undefined' ? filtros.precoMax : '' %>"
           />
@@ -282,6 +286,7 @@
   </main>
   <%- include('../partial/footer.ejs') %>
   <script src="/js/produto-delete.js"></script>
+  <script src="/js/filtro-preco.js"></script>
   <script src="/js/carrossel.js"></script>
   <script src="/js/darkmode.js"></script>
   <script src="/js/pwa.js" defer></script>
